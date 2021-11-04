@@ -5,6 +5,8 @@ module KIKO {
     use 0x1::Token::{Self, Token};
     use 0x1::Timestamp;
     use 0x1::Math;
+//    use 0x1::Account;
+    use 0x1::Signer;
 
     /// KIKO token marker.
     struct KIKO has copy, drop, store { }
@@ -12,9 +14,16 @@ module KIKO {
     /// precision of KIKO token.
     const PRECISION: u8 = 9;
 
+    const MANAGE_ADDRESS: address = @0x222;
+
     /// Burn capability of KIKO.
     struct SharedBurnCapability has key, store {
         cap: Token::BurnCapability<KIKO>,
+    }
+
+    /// Mint capability of KIKO.
+    struct SharedMintCapability has key, store {
+        cap: Token::MintCapability<KIKO>,
     }
 
     struct Config has key, store {
@@ -42,16 +51,31 @@ module KIKO {
         return free_amount - config.freed_amount
     }
 
-    public fun withdraw_amount_by_linear(account: &signer, amount: u128): (Token<KIKO>) acquires Config {
+    public fun withdraw_amount_by_linear(account: &signer, amount: u128): (Token<KIKO>) acquires Config, SharedMintCapability {
         let token_address = Token::token_address<KIKO>();
-
+        assert(Signer::address_of(account) == MANAGE_ADDRESS, 123);
         let config = borrow_global_mut<Config>(token_address);
         let can_withdraw = liner_amount(config);
         assert(amount < can_withdraw, 121);
-        let tokens = Token::mint<KIKO>(account, amount);
+        let shared_mint_cap = borrow_global<SharedMintCapability>(token_address);
+        let tokens = Token::mint_with_capability<KIKO>(&shared_mint_cap.cap, amount);
         config.freed_amount = config.freed_amount + Token::value<KIKO>(&tokens);
         return tokens
     }
+
+//    public(script) fun withdraw(signer: signer, amount: u128) acquires Config, SharedMintCapability {
+//        let tokens = withdraw_amount_by_linear(&signer, amount);
+//        Account::deposit_to_self<KIKO>(&signer, tokens);
+//    }
+//
+//    public(script) fun update_to_v2(account: signer) {
+//        let mint_cap = Token::remove_mint_capability<KIKO>(&account);
+//        move_to(&account, SharedMintCapability {cap: mint_cap });
+//    }
+//
+//    public(script) fun init(signer: signer) {
+//        initialize(&signer)
+//    }
 
     /// KIKO initialization.
     public fun initialize(
@@ -65,6 +89,8 @@ module KIKO {
             rate: 9800u64,
             genesis_month_yield: 10000000000000000u128
         });
+        let mint_cap = Token::remove_mint_capability<KIKO>(account);
+        move_to(account, SharedMintCapability {cap: mint_cap });
         let burn_cap = Token::remove_burn_capability<KIKO>(account);
         move_to(account, SharedBurnCapability { cap: burn_cap });
     }
