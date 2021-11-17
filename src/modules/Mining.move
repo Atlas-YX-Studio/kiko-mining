@@ -143,6 +143,8 @@ module Mining {
         to: address,
         // amount
         amount: u128,
+        // fee
+        fee: u128,
     }
 
     public fun lp_init<LP: store>(sender: &signer) acquires Config {
@@ -232,6 +234,7 @@ module Mining {
                 token_code: Token::token_code<LP>(),
                 to: to,
                 amount: amount,
+                fee: fee,
             }
         );
     }
