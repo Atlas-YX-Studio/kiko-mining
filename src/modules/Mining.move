@@ -123,6 +123,8 @@ module Mining {
         token_code: Token::TokenCode,
         // staking amount
         amount: u128,
+        // record id
+        record_id: u128,
     }
 
     // event emitted when unstake lp token
@@ -132,6 +134,8 @@ module Mining {
         token_code: Token::TokenCode,
         // staking amount
         amount: u128,
+        // record id
+        record_id: u128,
     }
 
     // event emitted when harvest lp stake profit
@@ -161,7 +165,7 @@ module Mining {
         };
     }
 
-    public fun lp_stake<LP: store>(sender: &signer, amount: u128) acquires LPStaking, LPStakePool {
+    public fun lp_stake<LP: store>(sender: &signer, amount: u128, record_id: u128) acquires LPStaking, LPStakePool {
         // pool exists
         assert(!exists<LPStakePool<LP>>(OWNER), POOL_NOT_EXISTS);
         // lp balance
@@ -188,11 +192,12 @@ module Mining {
                 sender: sender_address,
                 token_code: Token::token_code<LP>(),
                 amount: amount,
+                record_id: record_id,
             }
         );
     }
 
-    public fun lp_unstake<LP: store>(sender: &signer, amount: u128) acquires LPStaking, LPStakePool {
+    public fun lp_unstake<LP: store>(sender: &signer, amount: u128, record_id: u128) acquires LPStaking, LPStakePool {
         // staking amount
         let sender_address = Signer::address_of(sender);
         assert(!exists<LPStaking<LP>>(sender_address), STAKING_NOT_EXISTS);
@@ -218,6 +223,7 @@ module Mining {
                 sender: sender_address,
                 token_code: Token::token_code<LP>(),
                 amount: amount,
+                record_id: record_id,
             }
         );
     }
