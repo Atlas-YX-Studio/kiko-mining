@@ -14,11 +14,6 @@ module Mining {
 
     const OWNER: address = @0x222;
 
-    struct Config has key, store {
-        // manager, can harvest reward
-        manager: address,
-    }
-
     struct Trading has key, store {
         // event
         trading_harvest_event: Event::EventHandle<TradingHarvestEvent>,
@@ -35,16 +30,9 @@ module Mining {
         fee: u128,
     }
 
-
-    // init config and trading
-    public fun init(sender: &signer, manager: address) acquires Config {
+    // init trading
+    public fun init(sender: &signer) {
         assert_manager(sender);
-        if (!exists<Config>(OWNER)) {
-            move_to<Config>(sender,
-                Config {
-                    manager: manager,
-            });
-        };
         if (!exists<Trading>(OWNER)) {
             move_to<Trading>(sender,
                 Trading {
@@ -54,7 +42,7 @@ module Mining {
     }
 
     // harvest trading profit
-    public fun trading_harvest(sender: &signer, to: address, amount: u128, fee: u128) acquires Config, Trading {
+    public fun trading_harvest(sender: &signer, to: address, amount: u128, fee: u128) acquires Trading {
         assert_manager(sender);
         harvest(sender, to, amount, fee);
         let trading = borrow_global_mut<Trading>(OWNER);
@@ -90,12 +78,8 @@ module Mining {
         };
     }
 
-    fun assert_manager(sender: &signer) acquires Config {
-        if (Signer::address_of(sender) == OWNER) {
-            return
-        };
-        let config = borrow_global<Config>(OWNER);
-        assert(Signer::address_of(sender) == config.manager, PERMISSION_DENIED);
+    fun assert_manager(sender: &signer) {
+        assert(Signer::address_of(sender) == OWNER, PERMISSION_DENIED);
     }
 
     // ******************** LPToken stake ********************
@@ -151,7 +135,7 @@ module Mining {
         fee: u128,
     }
 
-    public fun lp_init<LP: store>(sender: &signer) acquires Config {
+    public fun lp_init<LP: store>(sender: &signer) {
         assert_manager(sender);
         if (!exists<LPStakePool<LP>>(OWNER)) {
             move_to(sender,
@@ -228,7 +212,7 @@ module Mining {
         );
     }
 
-    public fun lp_harvest<LP: store>(sender: &signer, to: address, amount: u128, fee: u128) acquires Config, LPStakePool {
+    public fun lp_harvest<LP: store>(sender: &signer, to: address, amount: u128, fee: u128) acquires LPStakePool {
         assert_manager(sender);
         harvest(sender, to, amount, fee);
         // emit event
