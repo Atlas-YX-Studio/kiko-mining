@@ -45,6 +45,13 @@ module Mining {
     public fun trading_harvest(sender: &signer, to: address, amount: u128, fee: u128) acquires Trading {
         assert_manager(sender);
         harvest(sender, to, amount, fee);
+        // emit event
+        if (!exists<Trading>(OWNER)) {
+            move_to<Trading>(sender,
+                Trading {
+                    trading_harvest_event: Event::new_event_handle<TradingHarvestEvent>(sender),
+                });
+        };
         let trading = borrow_global_mut<Trading>(OWNER);
         Event::emit_event(
             &mut trading.trading_harvest_event,
@@ -69,13 +76,6 @@ module Mining {
         };
         // deposit to user
         Account::deposit(to, tokens);
-        // emit event
-        if (!exists<Trading>(OWNER)) {
-            move_to<Trading>(sender,
-                Trading {
-                    trading_harvest_event: Event::new_event_handle<TradingHarvestEvent>(sender),
-                });
-        };
     }
 
     fun assert_manager(sender: &signer) {
