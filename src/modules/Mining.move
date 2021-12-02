@@ -4,7 +4,7 @@ module Mining {
     use 0x1::Account;
     use 0x1::Event;
     use 0x1::Signer;
-    use 0x111::KIKO;
+    use 0x111::KIKO::{Self, KIKO};
 
     const PERMISSION_DENIED: u64 = 100001;
     const POOL_NOT_EXISTS: u64 = 100002;
@@ -168,6 +168,10 @@ module Mining {
         } else {
             let staking = borrow_global_mut<LPStaking<LP>>(sender_address);
             staking.amount = staking.amount + amount;
+        };
+        // accept kiko
+        if (!Account::is_accepts_token<KIKO>(sender_address)){
+            Account::do_accept_token<KIKO>(sender);
         };
         // emit event
         Event::emit_event(

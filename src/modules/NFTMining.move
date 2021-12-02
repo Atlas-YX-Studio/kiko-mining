@@ -5,11 +5,12 @@ module NFTMining {
     use 0x1::Account;
     use 0x1::Event;
     use 0x1::Signer;
+    use 0x1::STC::STC;
     use 0x1::Vector;
     use 0x1::Option::{Self, Option};
     use 0x1::NFT::NFT;
     use 0x1::NFTGallery;
-    use 0x111::KIKO;
+    use 0x111::KIKO::{Self, KIKO};
 
     const PERMISSION_DENIED: u64 = 100001;
     const NFT_NOT_SURPPORT: u64 = 100002;
@@ -17,6 +18,7 @@ module NFTMining {
     const STAKE_GALLERY_NOT_EXISTS: u64 = 100004;
     const ORDER_TOO_HIGH: u64 = 100005;
     const ORDER_ALREADY_EXISTS: u64 = 100006;
+    const INSUFFICIENT_STC_BALANCE: u64 = 100007;
 
     const OWNER: address = @0x222;
 
@@ -34,6 +36,8 @@ module NFTMining {
         sender: address,
         // to user
         to: address,
+        // token
+        token_code: Token::TokenCode,
         // amount
         amount: u128,
         // fee
@@ -41,35 +45,21 @@ module NFTMining {
     }
 
     // init nft config
-    public fun init_config(sender: &signer, max_size: u64) {
-        assert_manager(sender);
+    public(script) fun init_config(sender: signer, max_size: u64) {
+        assert_manager(&sender);
         if (!exists<NFTConfig>(OWNER)) {
-            move_to<NFTConfig>(sender,
+            move_to<NFTConfig>(&sender,
                 NFTConfig {
                     max_size: max_size,
-                    harvest_event: Event::new_event_handle<NFTHarvestEvent>(sender),
+                    harvest_event: Event::new_event_handle<NFTHarvestEvent>(&sender),
                 });
         };
     }
 
     // harvest trading profit
-    public fun nft_mining_harvest(sender: &signer, to: address, amount: u128, fee: u128) acquires NFTConfig {
-        assert_manager(sender);
-        harvest(sender, to, amount, fee);
-        let config = borrow_global_mut<NFTConfig>(OWNER);
-        Event::emit_event(
-            &mut config.harvest_event,
-            NFTHarvestEvent {
-                sender: Signer::address_of(sender),
-                to: to,
-                amount: amount,
-                fee: fee,
-            }
-        );
-    }
-
-    fun harvest(sender: &signer, to: address, amount: u128, fee: u128) {
-        let tokens = KIKO::withdraw_amount_by_linear(sender, amount);
+    public(script) fun nft_mining_harvest_kiko(sender: signer, to: address, amount: u128, fee: u128) acquires NFTConfig {
+        assert_manager(&sender);
+        let tokens = KIKO::withdraw_amount_by_linear(&sender, amount);
         // take gas
         if (fee >= amount) {
             Account::deposit(OWNER, tokens);
@@ -80,6 +70,39 @@ module NFTMining {
         };
         // deposit to user
         Account::deposit(to, tokens);
+        let config = borrow_global_mut<NFTConfig>(OWNER);
+        Event::emit_event(
+            &mut config.harvest_event,
+            NFTHarvestEvent {
+                sender: Signer::address_of(&sender),
+                to: to,
+                token_code: Token::token_code<KIKO>(),
+                amount: amount,
+                fee: fee,
+            }
+        );
+    }
+
+    // harvest trading profit
+    public(script) fun nft_mining_harvest_stc(sender: &signer, to: address, amount: u128, fee: u128) acquires NFTConfig {
+        assert_manager(sender);
+        // take gas
+        if (fee >= amount) {
+            return
+        };
+        // deposit to user
+        Account::pay_from<STC>(sender, to, amount);
+        let config = borrow_global_mut<NFTConfig>(OWNER);
+        Event::emit_event(
+            &mut config.harvest_event,
+            NFTHarvestEvent {
+                sender: Signer::address_of(sender),
+                to: to,
+                token_code: Token::token_code<STC>(),
+                amount: amount,
+                fee: fee,
+            }
+        );
     }
 
     fun assert_manager(sender: &signer) {
@@ -129,19 +152,24 @@ module NFTMining {
     }
 
     // init nft stake events
-    public fun nft_init<NFTMeta: store + drop, NFTBody: store + drop>(sender: &signer) {
-        assert_manager(sender);
+    public(script) fun nft_init<NFTMeta: store + drop, NFTBody: store + drop>(sender: signer) {
+        assert_manager(&sender);
         if (!exists<NFTStakeEvents<NFTMeta, NFTBody>>(OWNER)) {
-            move_to<NFTStakeEvents<NFTMeta, NFTBody>>(sender,
+            move_to<NFTStakeEvents<NFTMeta, NFTBody>>(&sender,
                 NFTStakeEvents<NFTMeta, NFTBody> {
-                    stake_events: Event::new_event_handle<NFTStakeEvent<NFTMeta, NFTBody>>(sender),
-                    unstake_events: Event::new_event_handle<NFTUnstakeEvent<NFTMeta, NFTBody>>(sender),
+                    stake_events: Event::new_event_handle<NFTStakeEvent<NFTMeta, NFTBody>>(&sender),
+                    unstake_events: Event::new_event_handle<NFTUnstakeEvent<NFTMeta, NFTBody>>(&sender),
                 });
         };
     }
 
     // stake nft
-    public fun nft_stake<NFTMeta: copy + store + drop, NFTBody: copy + store + drop>(sender: &signer, nft_id: u64, order: u64)
+    public(script) fun nft_stake<NFTMeta: copy + store + drop, NFTBody: copy + store + drop>(sender: signer, nft_id: u64, order: u64)
+    acquires NFTConfig, NFTStakeOrder, NFTStakeGallery, NFTStakeEvents {
+        do_nft_stake<NFTMeta, NFTBody>(&sender, nft_id, order);
+    }
+
+    public fun do_nft_stake<NFTMeta: copy + store + drop, NFTBody: copy + store + drop>(sender: &signer, nft_id: u64, order: u64)
     acquires NFTConfig, NFTStakeOrder, NFTStakeGallery, NFTStakeEvents {
         assert(exists<NFTStakeEvents<NFTMeta, NFTBody>>(OWNER), NFT_NOT_SURPPORT);
         // get nft from gallery
@@ -187,6 +215,10 @@ module NFTMining {
             order: order,
         };
         Vector::push_back(&mut stake_gallery.items, stake_info);
+        // accept kiko
+        if (!Account::is_accepts_token<KIKO>(sender_address)){
+            Account::do_accept_token<KIKO>(sender);
+        };
         // emit event
         let stake_events = borrow_global_mut<NFTStakeEvents<NFTMeta, NFTBody>>(OWNER);
         Event::emit_event(
@@ -200,7 +232,12 @@ module NFTMining {
     }
 
     // unstake nft
-    public fun nft_unstake<NFTMeta: copy + store + drop, NFTBody: copy + store + drop>(sender: &signer, order: u64)
+    public(script) fun nft_unstake<NFTMeta: copy + store + drop, NFTBody: copy + store + drop>(sender: signer, order: u64)
+    acquires NFTStakeOrder, NFTStakeGallery, NFTStakeEvents {
+        do_nft_unstake<NFTMeta, NFTBody>(&sender, order);
+    }
+
+    public fun do_nft_unstake<NFTMeta: copy + store + drop, NFTBody: copy + store + drop>(sender: &signer, order: u64)
     acquires NFTStakeOrder, NFTStakeGallery, NFTStakeEvents {
         let sender_address = Signer::address_of(sender);
         // withdraw nft
@@ -255,14 +292,14 @@ module NFTMining {
     }
 
     // change nft
-    public fun nft_change<NFTMetaIn: copy + store + drop, NFTBodyIn: copy + store + drop,
+    public(script) fun nft_change<NFTMetaIn: copy + store + drop, NFTBodyIn: copy + store + drop,
                           NFTMetaOut: copy + store + drop, NFTBodyOut: copy + store + drop>
-    (sender: &signer, nft_in_id: u64, order: u64)
+    (sender: signer, nft_in_id: u64, order: u64)
     acquires NFTConfig, NFTStakeOrder, NFTStakeGallery, NFTStakeEvents {
         // unstake
-        nft_unstake<NFTMetaOut, NFTBodyOut>(sender, order);
+        do_nft_unstake<NFTMetaOut, NFTBodyOut>(&sender, order);
         // stake nft
-        nft_stake<NFTMetaIn, NFTBodyIn>(sender, nft_in_id, order);
+        do_nft_stake<NFTMetaIn, NFTBodyIn>(&sender, nft_in_id, order);
     }
 
 }
