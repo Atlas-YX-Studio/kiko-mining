@@ -1,4 +1,4 @@
-address 0x111 {
+address 0x290c7b35320a4dd26f651fd184373fe7 {
 /// KIKO is the token of Starcoin blockchain.
 /// It uses apis defined in the `Token` module.
 module KIKO {

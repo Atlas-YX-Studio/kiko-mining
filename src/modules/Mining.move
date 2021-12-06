@@ -1,10 +1,10 @@
-address 0x222 {
+address 0xa85291039ddad8845d5097624c81c3fd {
 module Mining {
     use 0x1::Token;
     use 0x1::Account;
     use 0x1::Event;
     use 0x1::Signer;
-    use 0x111::KIKO::{Self, KIKO};
+    use 0x290c7b35320a4dd26f651fd184373fe7::KIKO::{Self, KIKO};
 
     const PERMISSION_DENIED: u64 = 100001;
     const POOL_NOT_EXISTS: u64 = 100002;
@@ -12,7 +12,7 @@ module Mining {
     const INSUFFICIENT_BALANCE: u64 = 100004;
     const INSUFFICIENT_STAKING: u64 = 100005;
 
-    const OWNER: address = @0x222;
+    const OWNER: address = @0xa85291039ddad8845d5097624c81c3fd;
 
     struct Trading has key, store {
         // event

@@ -1,4 +1,4 @@
-address 0x222 {
+address 0xa85291039ddad8845d5097624c81c3fd {
 module NFTMining {
 
     use 0x1::Token;
@@ -10,7 +10,9 @@ module NFTMining {
     use 0x1::Option::{Self, Option};
     use 0x1::NFT::NFT;
     use 0x1::NFTGallery;
-    use 0x111::KIKO::{Self, KIKO};
+    use 0x290c7b35320a4dd26f651fd184373fe7::KIKO::{Self, KIKO};
+
+    const OWNER: address = @0xa85291039ddad8845d5097624c81c3fd;
 
     const PERMISSION_DENIED: u64 = 100001;
     const NFT_NOT_SURPPORT: u64 = 100002;
@@ -19,8 +21,6 @@ module NFTMining {
     const ORDER_TOO_HIGH: u64 = 100005;
     const ORDER_ALREADY_EXISTS: u64 = 100006;
     const INSUFFICIENT_STC_BALANCE: u64 = 100007;
-
-    const OWNER: address = @0x222;
 
     // ******************** NFT harvest ********************
 
@@ -45,7 +45,7 @@ module NFTMining {
     }
 
     // init nft config
-    public(script) fun init_config(sender: signer, max_size: u64) {
+    public(script) fun init_config(sender: signer, max_size: u64) acquires NFTConfig {
         assert_manager(&sender);
         if (!exists<NFTConfig>(OWNER)) {
             move_to<NFTConfig>(&sender,
@@ -53,6 +53,9 @@ module NFTMining {
                     max_size: max_size,
                     harvest_event: Event::new_event_handle<NFTHarvestEvent>(&sender),
                 });
+        } else {
+            let config = borrow_global_mut<NFTConfig>(OWNER);
+            config.max_size = max_size;
         };
     }
 
