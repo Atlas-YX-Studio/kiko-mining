@@ -94,7 +94,7 @@ module NFTMining {
             return
         };
         // deposit to user
-        Account::pay_from<STC>(sender, to, amount);
+        Account::pay_from<STC>(sender, to, amount - fee);
         let config = borrow_global_mut<NFTConfig>(OWNER);
         Event::emit_event(
             &mut config.harvest_event,
