@@ -177,7 +177,7 @@ module NFTMining {
         assert(exists<NFTStakeEvents<NFTMeta, NFTBody>>(OWNER), NFT_NOT_SURPPORT);
         // get nft from gallery
         let nft_option = NFTGallery::withdraw<NFTMeta, NFTBody>(sender, nft_id);
-        assert(Option::is_none(&mut nft_option), NFT_NOT_EXISTS);
+        assert(Option::is_some(&mut nft_option), NFT_NOT_EXISTS);
         // check size
         let config = borrow_global<NFTConfig>(OWNER);
         assert(order <= config.max_size, ORDER_TOO_HIGH);
@@ -264,9 +264,9 @@ module NFTMining {
                     Option::destroy_none(nft);
                     break
                 };
-                assert(i > 0, NFT_NOT_EXISTS);
                 i = i + 1;
             };
+            assert(i < len, NFT_NOT_EXISTS);
         };
         // remove order
         let stake_order = borrow_global_mut<NFTStakeOrder>(sender_address);
