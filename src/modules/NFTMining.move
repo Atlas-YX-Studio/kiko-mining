@@ -10,7 +10,7 @@ module NFTMining {
     use 0x1::Option::{Self, Option};
     use 0x1::NFT::NFT;
     use 0x1::NFTGallery;
-    use 0x290c7b35320a4dd26f651fd184373fe7::KIKO::{Self, KIKO};
+//    use 0x290c7b35320a4dd26f651fd184373fe7::KIKO::{Self, KIKO};
 
     const OWNER: address = @0xa85291039ddad8845d5097624c81c3fd;
 
@@ -60,46 +60,46 @@ module NFTMining {
     }
 
     // harvest trading profit
-    public(script) fun nft_mining_harvest_kiko(sender: signer, to: address, amount: u128, fee: u128) acquires NFTConfig {
+//    public(script) fun nft_mining_harvest_kiko(sender: signer, to: address, amount: u128, fee: u128) acquires NFTConfig {
+//        assert_manager(&sender);
+//        let tokens = KIKO::withdraw_amount_by_linear(&sender, amount);
+//        // take gas
+//        if (fee >= amount) {
+//            Account::deposit(OWNER, tokens);
+//            return
+//        } else if (fee > 0) {
+//            let fee_tokens = Token::withdraw(&mut tokens, fee);
+//            Account::deposit(OWNER, fee_tokens);
+//        };
+//        // deposit to user
+//        Account::deposit(to, tokens);
+//        let config = borrow_global_mut<NFTConfig>(OWNER);
+//        Event::emit_event(
+//            &mut config.harvest_event,
+//            NFTHarvestEvent {
+//                sender: Signer::address_of(&sender),
+//                to: to,
+//                token_code: Token::token_code<KIKO>(),
+//                amount: amount,
+//                fee: fee,
+//            }
+//        );
+//    }
+
+    // harvest trading profit
+    public(script) fun harvest_stc(sender: signer, to: address, amount: u128, fee: u128) acquires NFTConfig {
         assert_manager(&sender);
-        let tokens = KIKO::withdraw_amount_by_linear(&sender, amount);
         // take gas
         if (fee >= amount) {
-            Account::deposit(OWNER, tokens);
             return
-        } else if (fee > 0) {
-            let fee_tokens = Token::withdraw(&mut tokens, fee);
-            Account::deposit(OWNER, fee_tokens);
         };
         // deposit to user
-        Account::deposit(to, tokens);
+        Account::pay_from<STC>(&sender, to, amount - fee);
         let config = borrow_global_mut<NFTConfig>(OWNER);
         Event::emit_event(
             &mut config.harvest_event,
             NFTHarvestEvent {
                 sender: Signer::address_of(&sender),
-                to: to,
-                token_code: Token::token_code<KIKO>(),
-                amount: amount,
-                fee: fee,
-            }
-        );
-    }
-
-    // harvest trading profit
-    public(script) fun nft_mining_harvest_stc(sender: &signer, to: address, amount: u128, fee: u128) acquires NFTConfig {
-        assert_manager(sender);
-        // take gas
-        if (fee >= amount) {
-            return
-        };
-        // deposit to user
-        Account::pay_from<STC>(sender, to, amount - fee);
-        let config = borrow_global_mut<NFTConfig>(OWNER);
-        Event::emit_event(
-            &mut config.harvest_event,
-            NFTHarvestEvent {
-                sender: Signer::address_of(sender),
                 to: to,
                 token_code: Token::token_code<STC>(),
                 amount: amount,
