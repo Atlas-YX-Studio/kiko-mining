@@ -1,4 +1,4 @@
-address 0xa85291039ddad8845d5097624c81c3fd {
+address 0x7ed4261b68ddb20158109794bbab3ae7 {
 module NFTMining {
 
     use 0x1::Token;
@@ -12,7 +12,7 @@ module NFTMining {
     use 0x1::NFTGallery;
 //    use 0x290c7b35320a4dd26f651fd184373fe7::KIKO::{Self, KIKO};
 
-    const OWNER: address = @0xa85291039ddad8845d5097624c81c3fd;
+    const OWNER: address = @0x7ed4261b68ddb20158109794bbab3ae7;
 
     const PERMISSION_DENIED: u64 = 100001;
     const NFT_NOT_SURPPORT: u64 = 100002;
@@ -219,9 +219,9 @@ module NFTMining {
         };
         Vector::push_back(&mut stake_gallery.items, stake_info);
         // accept kiko
-        if (!Account::is_accepts_token<KIKO>(sender_address)){
-            Account::do_accept_token<KIKO>(sender);
-        };
+//        if (!Account::is_accepts_token<KIKO>(sender_address)){
+//            Account::do_accept_token<KIKO>(sender);
+//        };
         // emit event
         let stake_events = borrow_global_mut<NFTStakeEvents<NFTMeta, NFTBody>>(OWNER);
         Event::emit_event(
